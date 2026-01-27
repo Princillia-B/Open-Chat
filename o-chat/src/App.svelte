@@ -7,7 +7,7 @@
 
   /* Reprise des éléments HTML*/
   const sidebarElements = {
-    title: "O'Chat",
+    title: "OpenChat",
     subtitle: "Vos Chats",
     primaryLabel: "Nouvelle Conversation",
     secondaryLabel: "Titre de la conversation",
@@ -189,7 +189,7 @@ onMount(() => {
 {#if token === null}
   <section class="card">
     <form class="add-token-form" onsubmit={handleSubmit}>
-      <h1 class="title">O'Chat</h1>
+      <h1 class="title">OpenChat</h1>
       <label for="add-token-lable"></label>
       <input
         type="text"
