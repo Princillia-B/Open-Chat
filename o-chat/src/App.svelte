@@ -43,7 +43,6 @@
   // Variable de reset du Chat
   let resetChat = $state(0);
 
-
   /* --- fonction permettant de gérer le clic du bouton envoyer*/
   async function handleSubmit(event) {
     event.preventDefault();
@@ -149,18 +148,16 @@
   });
 
   /*--- Clique bouton nouvelle conversation ---*/
-function newConversation() {
-  activeConversationId = null;
-  waitingConversationTitle = null;
-  isCreatingConversation = false;
+  function newConversation() {
+    activeConversationId = null;
+    waitingConversationTitle = null;
+    isCreatingConversation = false;
 
-  // optionnel : vider le chat affiché
-  // conversations = [];
+    // optionnel : vider le chat affiché
+    // conversations = [];
 
-  resetChat++;
-}
-
-
+    resetChat++;
+  }
 </script>
 
 <!--HTML-->
@@ -190,7 +187,11 @@ function newConversation() {
       secondaryLabel={sidebarElements.secondaryLabel}
       thirdLabel={sidebarElements.thirdLabel}
       logOut={logOutToken}
-      onNewConversation = {newConversation}
+      onNewConversation={newConversation}
+      onSelectConversation={(id) => {
+        activeConversationId = id;
+        resetChat++; // force le rechargement propre
+      }}
       {conversations}
     />
 
@@ -200,7 +201,7 @@ function newConversation() {
       message={chatElements.message}
       sendQuestion={chatElements.sendQuestion}
       {activeConversationId}
-      resetChatKey = {resetChat}
+      resetChatKey={resetChat}
       onTitleGenerated={(title) => (waitingConversationTitle = title)}
     />
   </div>

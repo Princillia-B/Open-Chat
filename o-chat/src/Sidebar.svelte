@@ -10,6 +10,7 @@
         thirdLabel,
         logOut,
         onNewConversation,
+        onSelectConversation, 
         conversations = [],
     } = $props();
 
@@ -57,7 +58,7 @@
         <h2>{subtitle}</h2>
         {#each conversations as conversation}
             <ul class="conversation-list">
-                <li class="conversation-item">
+                <li class="conversation-item" onclick={() => onSelectConversation(conversation.id)} >
                     {conversation.title}
                 </li>
                 <div class="btn-trash-icon">

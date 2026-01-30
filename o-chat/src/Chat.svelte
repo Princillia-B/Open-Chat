@@ -32,7 +32,7 @@
 
     /*--- Ajouter le message dans le chat---*/
     async function handleSubmit(event) {
-        event.preventDefault()
+        event.preventDefault();
         sendMessage();
     }
 
@@ -128,18 +128,22 @@
 
     /*--- Récupérer l'historique des conversations ---*/
     async function chatHistory() {
-        // 1. Appeler l’API
+        // 0. Si aucune conversation n'est active, on vide le chat
+        if (!activeConversationId) {
+            conversations = [];
+            return;
+        }
+
+        // 1. Appeler l’API en filtrant par conversation active
         const response = await fetch(
-            `http://127.0.0.1:8090/api/collections/O_Chat/records`,
-        );
+        `http://127.0.0.1:8090/api/collections/O_Chat/records?filter=(conversation='${activeConversationId}')&sort=created`,
+    );
 
         // 2. Attendre la réponse et la convertir en JSON
         const data = await response.json();
 
-        //3. Récupérer tous les messages de l'objet data.items et les mettre dans un tableau appelé "conversations". Puis le trier dans l'ordre chronologique avec la fonction .sort()
-        conversations = data.items.sort(
-            (a, b) => new Date(a.created) - new Date(b.created),
-        );
+        // 3. Récupérer uniquement les messages de cette conversation
+        conversations = data.items;
     }
 
     // Dire à Svelte de démarrer l'historique dès l'apparition du Front
@@ -189,17 +193,24 @@
         }
 
         return rawTitle
-            .replace(/["'.]/g, "") // enlève guillemets et points
+            .replace(/[".]/g, "") // enlève guillemets et points
             .replace(/\n/g, " ") // enlève retours ligne
             .trim();
     }
 
     /* Déclencher le reset du chat */
     $effect(() => {
-        resetChatKey; 
+        resetChatKey;
         conversations = [];
         titleAlreadyGenerated = false;
     });
+
+    /* Déclencher le bouton de chat pour avoir l'historique */
+    $effect(() => {
+    if (activeConversationId) {
+        chatHistory();
+    }
+});
 </script>
 
 <!-- HTML -->
