@@ -29,7 +29,7 @@
   token = localStorage.getItem("authToken");
 
   /*--- Variable permettant de lier le front à PocketBase ---*/
-  const pb = new PocketBase("http://127.0.0.1:8090");
+  const pocketBase = new PocketBase("http://127.0.0.1:8090");
   let conversations = $state([]); // pour stocker les conversations
 
   /*--- Variables de conversation ---*/
@@ -38,55 +38,15 @@
 
   //Variable de titre en attente (pour stocker le titre) et varibel de création de conversation
   let waitingConversationTitle = $state(null);
-let isCreatingConversation = $state(false);
+  let isCreatingConversation = $state(false);
 
-$effect(() => {
-  const shouldCreateConversation =
-    activeConversationId === null &&
-    !!waitingConversationTitle &&
-    !isCreatingConversation;
+  // Variable de reset du Chat
+  let resetChat = $state(0);
 
-  if (shouldCreateConversation) {
-    console.log("🟢 Conditions OK → création de la conversation à lancer");
-  } else {
-    console.log("🔵 Pas de création :", {
-      activeConversationId,
-      waitingConversationTitle,
-      isCreatingConversation,
-    });
-  }
-});
 
   /* --- fonction permettant de gérer le clic du bouton envoyer*/
   async function handleSubmit(event) {
     event.preventDefault();
-  }
-
-  /*--- Envoyer le Token Mistral à Mistral ---*/
-  async function sendMessage() {
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        model: "mistral-large-latest",
-        messages: [
-          {
-            role: "user",
-            content: "Hello",
-          },
-        ],
-      }),
-    });
-
-    //On vérifie le statut de la réponse (succès 200 /erreur 400)
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur API ${response.status}: ${errorText}`);
-    }
-    const data = await response.json();
   }
 
   /*--- Fonction de validation du Token ---*/
@@ -132,7 +92,7 @@ $effect(() => {
 
   /*--- Récupérer les conversations ---*/
   async function getConversations() {
-    const result = await pb.collection("conversations").getFullList(); // code de Pocketbase permettant de get conversation (voir dans </>API Preview
+    const result = await pocketBase.collection("conversations").getFullList(); // code de Pocketbase permettant d'obtenir les conversationq
 
     conversations = result; //Stocker les conversations dans PocketBase
   }
@@ -142,74 +102,64 @@ $effect(() => {
     await getConversations();
   });
 
-  /*--- Générer un titre automatiquement à partir du premier message (générer par Mistral)---*/
-  async function generateConversationTitle(firstUserMessage, userToken) {
-    // si le token est différenty de l'usertoken alors on stoppe
-    if (!userToken) {
-      return;
-    }
-
-    const iaPrompt =
-      "Génères des titres de conversation. Réponds uniquement par un titre très court (3 à 6 mots), sans guillemets, sans point final, sans emoji."; //l'IA va lire cette prhase pour comprendre comment générer ces titres
-
-    const userPrompt = `Message utilisateur:\n${firstUserMessage}\n\nTitre:`; //Message de l'utilisateur = saut de ligne + first user message + sauts de lignes (comme <br><br>) + titre (je montre le message l'IA et je lui dis de me donner un titre)
-
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${userToken}`,
-      },
-      body: JSON.stringify({
-        model: "mistral-large-latest",
-        messages: [
-          { role: "system", content: iaPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.2, //temperature permet de fixer le niveau de créativité de l'IA dans ces réponses
-        max_tokens: 20, // pour limiter le nmb de caractères du titre
-      }),
-    });
-
-    //On vérifie le statut de la réponse (succès 200 /erreur 400)
-    if (!response.ok) {
-      const errorText = await response.text();
-      return;
-    }
-
-    // Si la réponse est ok
-    const data = await response.json(); //rappel : fetch donne une réponse en HTTP il faut la converir en json pour que ça deviennent un objet JS visible sur le dom
-
-    // Récupérér le titre de l'ia à partir de ma variable ai Title
-    const aiTitle = data?.choices?.[0]?.message?.content;
-    return aiTitle;
-  }
-
-  onMount(() => {
-    generateConversationTitle("Comment connecter PocketBase à Svelte", token);
-  });
-
   /*--- Créer la conversation dans PocketBase avec le titre généré --- */
   async function createConversationInPocketBase(title) {
-    console.log("🛠 Création de la conversation avec le titre :", title);
+    isCreatingConversation = true;
 
-  isCreatingConversation = true;
-
-  try {
-    const created = await pb.collection("conversations").create({
-      title: title,
-    });
-
-    console.log("✅ Conversation créée :", created);
-
-    return created.id;
-  } catch (error) {
-    console.error("❌ Erreur création conversation :", error);
-    return null;
-  } finally {
-    isCreatingConversation = false;
+    try {
+      const created = await pocketBase.collection("conversations").create({
+        title: title,
+      });
+      return created;
+    } catch (error) {
+      console.error("❌ Erreur création conversation :", error);
+      return null;
+    }
   }
+
+  // Executer automatique le code quand l'état change
+  $effect(async () => {
+    if (
+      activeConversationId !== null ||
+      !waitingConversationTitle ||
+      isCreatingConversation
+    ) {
+      return;
+    }
+
+    isCreatingConversation = true;
+
+    const createdConversation = await createConversationInPocketBase(
+      waitingConversationTitle,
+    );
+
+    if (createdConversation) {
+      // stocker l’ID
+      activeConversationId = createdConversation.id;
+
+      // ajouter à la liste affichée
+      conversations = [createdConversation, ...conversations];
+
+      // nettoyer l’état temporaire
+      waitingConversationTitle = null;
+    }
+
+    // libérer le verrou
+    isCreatingConversation = false;
+  });
+
+  /*--- Clique bouton nouvelle conversation ---*/
+function newConversation() {
+  activeConversationId = null;
+  waitingConversationTitle = null;
+  isCreatingConversation = false;
+
+  // optionnel : vider le chat affiché
+  // conversations = [];
+
+  resetChat++;
 }
+
 
 </script>
 
@@ -240,6 +190,7 @@ $effect(() => {
       secondaryLabel={sidebarElements.secondaryLabel}
       thirdLabel={sidebarElements.thirdLabel}
       logOut={logOutToken}
+      onNewConversation = {newConversation}
       {conversations}
     />
 
@@ -249,6 +200,7 @@ $effect(() => {
       message={chatElements.message}
       sendQuestion={chatElements.sendQuestion}
       {activeConversationId}
+      resetChatKey = {resetChat}
       onTitleGenerated={(title) => (waitingConversationTitle = title)}
     />
   </div>

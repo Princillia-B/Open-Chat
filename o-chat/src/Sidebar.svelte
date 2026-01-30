@@ -9,6 +9,7 @@
         secondaryLabel,
         thirdLabel,
         logOut,
+        onNewConversation,
         conversations = [],
     } = $props();
 
@@ -21,14 +22,12 @@
         sidebarClosed = !sidebarClosed;
     }
 
-    /*Clique bouton nouvelle conversation */
-    function newConversationClick () {
-        console.log("nouvelle conversation")
-    }
-
     /* Clique bouton de déconnexion Token */
     function logOutTokenClick() {
         logOut();
+    }
+    function newConversationClick() {
+        onNewConversation();
     }
 </script>
 
@@ -56,19 +55,20 @@
             </div>
         </button>
         <h2>{subtitle}</h2>
-        <ul class="conversation-list">
-            {#each conversations as conversation}
+        {#each conversations as conversation}
+            <ul class="conversation-list">
                 <li class="conversation-item">
-                    {conversationTitle}
+                    {conversation.title}
                 </li>
-            {/each}
-        </ul>
-        <button class="btn-chat-title">
-            {secondaryLabel}
-            <div class="btn-trash-icon">
-                <Icon icon="famicons:trash-outline" width="20" height="20" />
-            </div>
-        </button>
+                <div class="btn-trash-icon">
+                    <Icon
+                        icon="famicons:trash-outline"
+                        width="20"
+                        height="20"
+                    />
+                </div>
+            </ul>
+        {/each}
     </section>
     <section class="section-bottom">
         <button class="btn-log-out" onclick={logOutTokenClick}>
@@ -187,7 +187,7 @@
     }
 
     .btn-new-chat,
-    .btn-chat-title {
+    .conversation-list {
         color: var(--primary-color);
         border: 0.1rem solid transparent;
         border-radius: 1rem;
@@ -200,6 +200,16 @@
         display: flex;
         gap: 1rem;
         outline: none;
+    }
+
+    .conversation-list {
+        display: flex;
+        justify-content: space-between;
+        margin-right: 4rem;
+    }
+
+    .conversation-item {
+        list-style-type: none;
     }
 
     .btn-log-out {
@@ -217,13 +227,13 @@
         outline: none;
     }
 
-    .btn-chat-title,
+    .conversation-list,
     .btn-log-out {
         background-color: var(--secondary-color);
     }
 
     .btn-new-chat:hover,
-    .btn-chat-title:hover,
+    .conversation-list:hover,
     .btn-log-out:hover {
         border-color: var(--third-color);
     }
@@ -257,7 +267,7 @@
         .btn-sidebar-icon,
         h2,
         .btn-new-chat,
-        .btn-chat-title,
+        .conversation-list,
         .btn-log-out {
             display: none;
         }

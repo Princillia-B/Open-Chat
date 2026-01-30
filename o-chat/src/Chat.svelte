@@ -3,7 +3,15 @@
     import Icon from "@iconify/svelte";
     import "./app.css";
     import { onMount } from "svelte";
-    const { question, response, message, sendQuestion, activeConversationId,  onTitleGenerated} = $props();
+    const {
+        question,
+        response,
+        message,
+        sendQuestion,
+        activeConversationId,
+        onTitleGenerated,
+        resetChatKey,
+    } = $props();
 
     /*--- Ajout des URLs et clé API ---*/
     const API_URL = import.meta.env.VITE_MISTRAL_URL;
@@ -24,16 +32,7 @@
 
     /*--- Ajouter le message dans le chat---*/
     async function handleSubmit(event) {
-        event.preventDefault();
-
-        if (activeConversationId === null) {
-            console.log("🟢 Premier message → génération du titre nécessaire");
-        } else {
-            console.log(
-                "🔵 Conversation existante → pas de génération de titre",
-            );
-        }
-
+        event.preventDefault()
         sendMessage();
     }
 
@@ -51,7 +50,6 @@
             const rawTitle = await generateConversationTitle(userMessageCopy);
             const title = normalizeTitle(rawTitle);
 
-            console.log("🧼 Titre final nettoyé (1 seule fois) :", title);
             onTitleGenerated(title);
         }
 
@@ -64,6 +62,7 @@
             body: JSON.stringify({
                 role: "user",
                 content: userMessageCopy,
+                conversation: activeConversationId,
             }),
         });
 
@@ -113,6 +112,7 @@
                     body: JSON.stringify({
                         role: "ai",
                         content: aiMessage,
+                        conversation: activeConversationId,
                     }),
                 },
             );
@@ -149,8 +149,6 @@
 
     /*--- Fonction pour que Mistral génère un titre */
     async function generateConversationTitle(firstMessage) {
-        console.log("🧠 Génération du titre à partir de :", firstMessage);
-
         const response = await fetch(
             "https://api.mistral.ai/v1/chat/completions",
             {
@@ -181,8 +179,6 @@
         const data = await response.json();
         const aiTitle = data?.choices?.[0]?.message?.content;
 
-        console.log("🟡 Titre généré :", aiTitle);
-
         return aiTitle;
     }
 
@@ -197,6 +193,13 @@
             .replace(/\n/g, " ") // enlève retours ligne
             .trim();
     }
+
+    /* Déclencher le reset du chat */
+    $effect(() => {
+        resetChatKey; 
+        conversations = [];
+        titleAlreadyGenerated = false;
+    });
 </script>
 
 <!-- HTML -->
