@@ -32,8 +32,30 @@
   const pb = new PocketBase("http://127.0.0.1:8090");
   let conversations = $state([]); // pour stocker les conversations
 
-  /*--- Variable permettant de savoir si la conversaiton est active ou non ---*/
+  /*--- Variables de conversation ---*/
+  // Variable permettant de savoir si la conversaiton est active ou
   let activeConversationId = $state(null); // null = aucune conversation active
+
+  //Variable de titre en attente (pour stocker le titre) et varibel de création de conversation
+  let waitingConversationTitle = $state(null);
+let isCreatingConversation = $state(false);
+
+$effect(() => {
+  const shouldCreateConversation =
+    activeConversationId === null &&
+    !!waitingConversationTitle &&
+    !isCreatingConversation;
+
+  if (shouldCreateConversation) {
+    console.log("🟢 Conditions OK → création de la conversation à lancer");
+  } else {
+    console.log("🔵 Pas de création :", {
+      activeConversationId,
+      waitingConversationTitle,
+      isCreatingConversation,
+    });
+  }
+});
 
   /* --- fonction permettant de gérer le clic du bouton envoyer*/
   async function handleSubmit(event) {
@@ -122,8 +144,7 @@
 
   /*--- Générer un titre automatiquement à partir du premier message (générer par Mistral)---*/
   async function generateConversationTitle(firstUserMessage, userToken) {
-
-    // si le token est différenty de l'usertoken alors
+    // si le token est différenty de l'usertoken alors on stoppe
     if (!userToken) {
       return;
     }
@@ -159,28 +180,36 @@
     // Si la réponse est ok
     const data = await response.json(); //rappel : fetch donne une réponse en HTTP il faut la converir en json pour que ça deviennent un objet JS visible sur le dom
 
-    // Récupérér le titire de l'ia à partir de ma variable ai Title
+    // Récupérér le titre de l'ia à partir de ma variable ai Title
     const aiTitle = data?.choices?.[0]?.message?.content;
     return aiTitle;
-}
+  }
 
-
-onMount(() => {
-    generateConversationTitle(
-      "Comment connecter PocketBase à Svelte",
-      token
-    );
+  onMount(() => {
+    generateConversationTitle("Comment connecter PocketBase à Svelte", token);
   });
 
   /*--- Créer la conversation dans PocketBase avec le titre généré --- */
   async function createConversationInPocketBase(title) {
-  const created = await pb.collection("conversations").create({
-    title: title,
-  });
-  return created;
+    console.log("🛠 Création de la conversation avec le titre :", title);
+
+  isCreatingConversation = true;
+
+  try {
+    const created = await pb.collection("conversations").create({
+      title: title,
+    });
+
+    console.log("✅ Conversation créée :", created);
+
+    return created.id;
+  } catch (error) {
+    console.error("❌ Erreur création conversation :", error);
+    return null;
+  } finally {
+    isCreatingConversation = false;
+  }
 }
-
-
 
 </script>
 
@@ -219,6 +248,8 @@ onMount(() => {
       response={chatElements.response}
       message={chatElements.message}
       sendQuestion={chatElements.sendQuestion}
+      {activeConversationId}
+      onTitleGenerated={(title) => (waitingConversationTitle = title)}
     />
   </div>
 {/if}

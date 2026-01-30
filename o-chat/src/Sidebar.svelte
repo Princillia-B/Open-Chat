@@ -59,7 +59,7 @@
         <ul class="conversation-list">
             {#each conversations as conversation}
                 <li class="conversation-item">
-                    {conversation.title}
+                    {conversationTitle}
                 </li>
             {/each}
         </ul>

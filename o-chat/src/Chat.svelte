@@ -3,7 +3,7 @@
     import Icon from "@iconify/svelte";
     import "./app.css";
     import { onMount } from "svelte";
-    const { question, response, message, sendQuestion } = $props();
+    const { question, response, message, sendQuestion, activeConversationId,  onTitleGenerated} = $props();
 
     /*--- Ajout des URLs et clé API ---*/
     const API_URL = import.meta.env.VITE_MISTRAL_URL;
@@ -11,6 +11,9 @@
 
     /*--- Variables de lecture des message*/
     let userMessage = $state("");
+
+    /*--- Variable de lecture d'un titre déjà généré*/
+    let titleAlreadyGenerated = false;
 
     /*--- Tableau contenant l'historique des anciens messages ---*/
     let conversations = $state([]);
@@ -21,8 +24,16 @@
 
     /*--- Ajouter le message dans le chat---*/
     async function handleSubmit(event) {
-        // on bloque la soumission du formulaire
         event.preventDefault();
+
+        if (activeConversationId === null) {
+            console.log("🟢 Premier message → génération du titre nécessaire");
+        } else {
+            console.log(
+                "🔵 Conversation existante → pas de génération de titre",
+            );
+        }
+
         sendMessage();
     }
 
@@ -31,6 +42,18 @@
         // Je copie le message de l'User pour qu'il soit envoyé à l'API puis je le vide
         const userMessageCopy = userMessage;
         userMessage = "";
+
+        // On va détecter si ce message est le premier, si c'est le premier on crée un id, sinon on garde celui qui est présent
+        const isFirstMessage = activeConversationId === null;
+        if (isFirstMessage && !titleAlreadyGenerated) {
+            titleAlreadyGenerated = true;
+
+            const rawTitle = await generateConversationTitle(userMessageCopy);
+            const title = normalizeTitle(rawTitle);
+
+            console.log("🧼 Titre final nettoyé (1 seule fois) :", title);
+            onTitleGenerated(title);
+        }
 
         //Envoi du userMessage à l'API PocketBAse
         await fetch("http://127.0.0.1:8090/api/collections/O_Chat/records", {
@@ -113,7 +136,7 @@
         // 2. Attendre la réponse et la convertir en JSON
         const data = await response.json();
 
-          //3. Récupérer tous les messages de l'objet data.items et les mettre dans un tableau appelé "conversations". Puis le trier dans l'ordre chronologique avec la fonction .sort()
+        //3. Récupérer tous les messages de l'objet data.items et les mettre dans un tableau appelé "conversations". Puis le trier dans l'ordre chronologique avec la fonction .sort()
         conversations = data.items.sort(
             (a, b) => new Date(a.created) - new Date(b.created),
         );
@@ -123,6 +146,57 @@
     onMount(async () => {
         await chatHistory();
     });
+
+    /*--- Fonction pour que Mistral génère un titre */
+    async function generateConversationTitle(firstMessage) {
+        console.log("🧠 Génération du titre à partir de :", firstMessage);
+
+        const response = await fetch(
+            "https://api.mistral.ai/v1/chat/completions",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${API_KEY}`,
+                },
+                body: JSON.stringify({
+                    model: "mistral-large-latest",
+                    messages: [
+                        {
+                            role: "system",
+                            content:
+                                "Génère un titre très court (3 à 6 mots). Réponds uniquement par le titre, sans guillemets, sans ponctuation.",
+                        },
+                        {
+                            role: "user",
+                            content: firstMessage,
+                        },
+                    ],
+                    temperature: 0.2, //temperature permet de fixer le niveau de créativité de l'IA dans ces réponses
+                    max_tokens: 20, // pour limiter le nmb de caractères du titre
+                }),
+            },
+        );
+
+        const data = await response.json();
+        const aiTitle = data?.choices?.[0]?.message?.content;
+
+        console.log("🟡 Titre généré :", aiTitle);
+
+        return aiTitle;
+    }
+
+    // Fonciton de normalisation pour enlever les guillets, points ety retour à la ligne des titres
+    function normalizeTitle(rawTitle) {
+        if (!rawTitle || typeof rawTitle !== "string") {
+            return "Nouvelle conversation";
+        }
+
+        return rawTitle
+            .replace(/["'.]/g, "") // enlève guillemets et points
+            .replace(/\n/g, " ") // enlève retours ligne
+            .trim();
+    }
 </script>
 
 <!-- HTML -->
@@ -147,9 +221,7 @@
 
     <form class="question-container" onsubmit={handleSubmit}>
         <label for="ask-question"></label>
-        <textarea
-            placeholder="Posez une question"
-            bind:value={userMessage}
+        <textarea placeholder="Posez une question" bind:value={userMessage}
         ></textarea>
         <button
             class="send-question"
@@ -218,7 +290,6 @@
         position: sticky;
         bottom: 0;
         box-shadow: 10px 10px 5px #000000;
-
     }
 
     .send-question {
