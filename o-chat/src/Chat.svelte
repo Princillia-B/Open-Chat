@@ -53,6 +53,8 @@
             onTitleGenerated(title);
         }
 
+        
+
         //Envoi du userMessage à l'API PocketBAse
         await fetch("http://127.0.0.1:8090/api/collections/O_Chat/records", {
             method: "POST",
