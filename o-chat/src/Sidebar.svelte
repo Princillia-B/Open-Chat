@@ -162,7 +162,7 @@
         font-weight: 500;
         display: flex;
         justify-content: space-between;
-        width: 75%;
+        width: 92%;
     }
     .btn-sidebar-icon {
         cursor: pointer;
@@ -206,7 +206,6 @@
     .conversation-list {
         display: flex;
         justify-content: space-between;
-        margin-right: 4rem;
     }
 
     .conversation-item {
@@ -249,12 +248,22 @@
         justify-content: center;
     }
 
+    .sidebar.closed .section-top,
+    .sidebar.closed .section-bottom {
+        display: none;
+    }
+
+    .sidebar.closed {
+        transform: translateX(-70%);
+        width: 30dvh;
+    }
+
     /* Responsive Mobilie */
     @media screen and (max-width: 576px) {
         .sidebar {
             border-right: none;
             border-bottom: 0.2rem solid var(--secondary-color);
-            width: 100%;
+            width: 100vw;
             margin: 0 0 4rem;
             display: flex;
             justify-content: space-between;
@@ -262,7 +271,13 @@
         }
 
         .sidebar.closed {
-            transform: translateX(90%);
+            transform: translateX(-75%);
+        }
+
+        .section-top {
+            padding: 0.5rem;
+            display: flex;
+            justify-content: space-between;
         }
 
         .btn-sidebar-icon,
@@ -282,6 +297,8 @@
 
         h1 {
             order: 2;
+            margin: 1rem;
         }
     }
+
 </style>
